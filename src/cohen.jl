@@ -16,7 +16,6 @@ end
 function U(d::Int64, Z::Int64)
     rem = posrem(d, 4)
     if !(rem == 0 || rem == 1)
-        @printf "d %d rem %d" d rem
         @assert false
     end
 
@@ -74,7 +73,8 @@ function T(c2::Int64, c2prime::Int64, dI::Int64, D::Int64, Y::Int64)
     total::Int64 = 0
 
     E::Int64 = 1
-    F = sqrt(dI^2 * c2 / c2prime * Y / abs(D))
+    internal = dI^2 * c2 / c2prime * Y / abs(D)
+    F = sqrt(internal)
     E = Int64(round(F))
 
     c2_dI = c2 * dI
@@ -148,7 +148,9 @@ function S5(D::Int64, Y::Int64)
         end
 
         # 4 * T_{chi, 1}((1), Y/16)
-        total += 4 * T(1, 1, dI, D, div(Y, 16))
+        if !(D > 0 && dI < 0)
+            total += 4 * T(1, 1, dI, D, div(Y, 16))
+        end
 
         # T_{chi, 4} T(2, Y)
         for c2 in [4, -4]
@@ -174,10 +176,16 @@ function S1(D::Int64, Y::Int64)
         end
 
         # 4 * T_{chi, 1}((1), Y/16)
-        total += 4 * T(1, 1, dI, D, div(Y, 16))
+        if !(D > 0 && dI < 0)
+#            @printf "foo: %d %d %d %d %d %d\n" 1 1 dI D div(Y, 16) T(1, 1, dI, D, div(Y, 16))
+            total += 4 * T(1, 1, dI, D, div(Y, 16))
+        end
 
         # 4 * T_{chi, 1}(p2, Y/4)
-        total += 4 * T(1, 1, dI, D, div(Y, 4))
+        if !(D > 0 && dI < 0)
+#            @printf "bar: %d %d %d %d %d %d\n" 4 1 dI D div(Y, 4) T(4, 1, dI, D, div(Y, 4))
+            total += 4 * T(4, 1, dI, D, div(Y, 4))
+        end
 
         # T_{chi, 4} T(2, Y)
         for c2 in [4, -4]
@@ -185,9 +193,11 @@ function S1(D::Int64, Y::Int64)
                 # For real qudratic fields, we skip negative characters
                 continue
             end
+#            @printf "baz: %d %d %d %d %d %d\n" c2 c2 dI D Y T(c2, c2, dI, D, Y)
             total += T(c2, c2, dI, D, Y)
         end
     end
+#    @printf "The total is.... %d\n" total
     return total
 end
 
@@ -203,17 +213,21 @@ function S8(D::Int64, Y::Int64)
         end
 
         # 4 * T_{chi, 1}((1), Y/16)
-        total += 4 * T(1, 1, dI, D, div(Y, 16))
+        if !(D > 0 && dI < 0)
+            val = 4 * T(1, 1, dI, D, div(Y, 16))
+            total += val
+        end
 
         # 2 * T_{chi, 4}(p2, Y/4)
         for c2 in [4, -4]
-            total += 2 * T(c2, c2, dI, D, div(Y, 4))
+            if !(D > 0 && c2 * dI < 0)
+                total += 2 * T(c2, c2, dI, D, div(Y, 4))
+            end
         end
 
         # T_{chi, 4} T(2, Y)
         for c2 in [4, -4]
             if D > 0 && c2 * dI < 0
-                # For real qudratic fields, we skip negative characters
                 continue
             end
             total += T(c2, c2, dI, D, Y)
@@ -228,27 +242,29 @@ function S12(D::Int64, Y::Int64)
     total::Int64 = 0
     for subset in subsets(D)
         dI = prod(subset)
+        # Only take one of dI and D/dI
         if abs(dI) > abs(div(D, dI))
-            # Only take one of dI and D/dI
             continue
         end
 
         # 4 * T_{chi, 1}((1), Y/16)
-        val = 4 * T(1, 1, dI, D, div(Y, 16))
-        total += val
+        if !(D > 0 && dI < 0)
+            val = 4 * T(1, 1, dI, D, div(Y, 16))
+            total += val
+        end
 
         # 2 * T_{chi, 1}(p2, Y/4)
-        val = 2 * T(1, 1, dI, D, div(Y, 4))
-        total += val
+        if !(D > 0 && dI < 0)
+            val = 2 * T(4, 4, dI, D, div(Y, 4))
+            total += val
+        end
 
         # T_{chi, 4} (2, Y)
         for c2 in [4, 8]
-            if D > 0 && c2 * dI < 0
-                # For real qudratic fields, we skip negative characters
+            if (D > 0 && c2 * dI < 0)
                 continue
             end
-            val = T(c2, c2, dI, D, Y)
-            total += val
+            total += T(c2, c2, dI, D, Y)
         end
     end
     return total
@@ -281,6 +297,7 @@ function N(D::Int64, X::Int64)
     end
 
     for n in 1:upper_bound
+#        @printf "D %d X %d n %d X/n^2 %d mu %d S %d\n" D X n div(X, n^2) μ(n, D) S(D, div(X, n^2))
         val = μ(n, D) * S(D, div(X, n^2))
         ret += val
     end
